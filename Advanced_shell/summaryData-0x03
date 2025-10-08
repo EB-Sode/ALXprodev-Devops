@@ -1,0 +1,49 @@
+#!/bin/bash
+# Script: summaryData-0x03
+# Description: Extract name, height, and weight from Pokémon JSON files and create a CSV
+
+OUTPUT_FILE="pokemon_report.csv"
+
+# Create or overwrite CSV with header
+echo "Name,Height(m),Weight(kg)" > "$OUTPUT_FILE"
+
+# Enable nullglob so *.json expands to nothing if no files exist
+shopt -s nullglob
+json_files=(*.json)
+
+if [ ${#json_files[@]} -eq 0 ]; then
+  echo "❌ No JSON files found in the current directory."
+  exit 1
+fi
+
+# Loop through JSON files
+for file in "${json_files[@]}"; do
+  if jq -e . "$file" >/dev/null 2>&1; then
+    name=$(jq -r '.name' "$file")
+    height=$(jq -r '.height' "$file")
+    weight=$(jq -r '.weight' "$file")
+
+    # Convert units
+    height_m=$(awk "BEGIN {print $height / 10}")
+    weight_kg=$(awk "BEGIN {print $weight / 10}")
+
+    # Capitalize first letter of name using sed (works on macOS)
+    name=$(echo "$name" | sed 's/^\(.\)/\U\1/')
+
+    # Append to CSV
+    echo "$name,$height_m,$weight_kg" >> "$OUTPUT_FILE"
+  else
+    echo "⚠️ Invalid JSON in $file" >> errors.txt
+  fi
+done
+ 
+echo "✅ Report generated: $OUTPUT_FILE"
+
+# Calculate averages
+avg_height=$(awk -F',' 'NR>1 {sum+=$2; count++} END {if(count>0) printf "%.2f", sum/count}' "$OUTPUT_FILE")
+avg_weight=$(awk -F',' 'NR>1 {sum+=$3; count++} END {if(count>0) printf "%.2f", sum/count}' "$OUTPUT_FILE")
+
+# Append averages to CSV file
+echo " " >> "$OUTPUT_FILE"
+echo "Average Height: ${avg_height}m" >> "$OUTPUT_FILE"
+echo "Average Weight: ${avg_weight}kg" >> "$OUTPUT_FILE"
