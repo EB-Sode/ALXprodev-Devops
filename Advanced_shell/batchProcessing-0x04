@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# List of Pokémon to fetch
+POKEMONS=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+
+# Base URL
+API_URL="https://pokeapi.co/api/v2/pokemon"
+
+# Error log file
+ERROR_FILE="errors.txt"
+
+# Clear old errors
+> "$ERROR_FILE"
+
+echo "⚡ Starting parallel Pokémon fetch..."
+
+# Function to fetch a single Pokémon
+fetch_pokemon() {
+  local name=$1
+  local output_file="${name}.json"
+
+  echo "🔎 Fetching $name..."
+  response_code=$(curl -s -w "%{http_code}" -o "$output_file" "${API_URL}/${name}")
+
+  if [ "$response_code" -eq 200 ]; then
+    echo "✅ $name data saved to $output_file"
+  else
+    echo "❌ Failed to fetch $name (HTTP $response_code)" >> "$ERROR_FILE"
+    rm -f "$output_file"  # Remove incomplete file
+  fi
+}
+
+# Launch all fetches in parallel
+for pokemon in "${POKEMONS[@]}"; do
+  fetch_pokemon "$pokemon" &
+done
+
+# Wait for all background processes to complete
+wait
+
+echo
+echo "🎯 All parallel fetches complete!"
+echo "Check '$ERROR_FILE' for any failed requests."
