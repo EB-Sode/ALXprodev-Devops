@@ -35,8 +35,16 @@ for pokemon in "${POKEMONS[@]}"; do
   fetch_pokemon "$pokemon" &
 done
 
+
+# Display running jobs
+echo "🔄 Waiting for background jobs to complete..."
+jobs
+
 # Wait for all background processes to complete
 wait
+
+# Optionally kill any stuck background jobs (safety check)
+kill $(jobs -p) 2>/dev/null
 
 echo
 echo "🎯 All parallel fetches complete!"
